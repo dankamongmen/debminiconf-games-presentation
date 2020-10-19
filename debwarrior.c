@@ -31,8 +31,8 @@ center_plane(const struct notcurses* nc, struct ncplane* n){
 
 static int
 load_celes(struct notcurses* nc, struct ncvisual** ncvs, struct ncplane** celes){
-  const char names[] = "LFRB";
-  char fn[11] = "CelesX.png";
+  const char names[] = "lfrb";
+  char fn[11] = "celesX.gif";
   for(int i = 0 ; i < 4 ; ++i){
     fn[5] = names[i];
     ncvs[i] = ncvisual_from_file(fn);
@@ -79,7 +79,7 @@ sleep(40);
 
 static int
 overworld_battle(struct notcurses* nc, struct ncplane* map, struct ncplane* player){
-  if(random() % 10 != 0){
+  if(random() % 20 != 0){
     return 0;
   }
   struct ncplane* copy = ncplane_dup(map, NULL);
@@ -157,6 +157,7 @@ input_loop(struct notcurses* nc, struct ncplane* map, struct ncplane* legend){
         }
       }
     }
+    // FIXME advance ncvisual via decode
     if(mapx < -(2048 - dimx)){
       mapx = -(2048 - dimx);
     }else if(mapx > 0){
