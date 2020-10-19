@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <sys/poll.h>
 #include <notcurses/notcurses.h>
@@ -19,6 +20,16 @@ legendplane(struct notcurses* nc){
 }
 
 static int
+center_plane(const struct notcurses* nc, struct ncplane* n){
+  int dimy, dimx;
+  // FIXME const struct ncplane* stdn = notcurses_stddim_yx_const(nc, &dimy, &dimx);
+  const struct ncplane* stdn = notcurses_stdplane_const(nc);
+  ncplane_dim_yx(stdn, &dimy, &dimx);
+  return ncplane_move_yx(n, ncplane_dim_y(stdn) / 2 - ncplane_dim_y(n) / 2,
+                         ncplane_dim_x(stdn) / 2 - ncplane_dim_x(n) / 2);
+}
+
+static int
 load_celes(struct notcurses* nc, struct ncvisual** ncvs, struct ncplane** celes){
   const char names[] = "LFRB";
   char fn[11] = "CelesX.png";
@@ -31,19 +42,38 @@ load_celes(struct notcurses* nc, struct ncvisual** ncvs, struct ncplane** celes)
     struct ncvisual_options vopts = {
       .scaling = NCSCALE_NONE,
       .blitter = NCBLIT_2x2,
-      .y = ncplane_dim_y(notcurses_stdplane(nc)) / 2,
-      .x = ncplane_dim_x(notcurses_stdplane(nc)) / 2,
     };
     celes[i] = ncvisual_render(nc, ncvs[i], &vopts);
     ncplane_move_bottom(celes[i]);
+    center_plane(nc, celes[i]);
   }
   return 0;
 }
 
 static int
 do_battle(struct notcurses* nc, struct ncplane* ep, struct ncplane* player){
-  notcurses_render(nc);
+  struct ncplane* cmdp = ncplane_new(notcurses_stdplane(nc), 10, 40,
+                                     ncplane_dim_y(notcurses_stdplane(nc)) - 10,
+                                     0, NULL, NULL);
+  static struct ncselector_item items[] = {
+    { "Attack", "Attack", },
+    { "Magic", "Magic", },
+    { "Vomit intensely", "Vomit intensely", },
+    { "Run", "Run", },
+  };
+  struct ncselector_options sopts = {
+    .title = "Action",
+    .items = items,
+  };
+  struct ncselector* cmdsel = ncselector_create(cmdp, &sopts);
+  if(cmdsel == NULL){
+    ncplane_destroy(cmdp);
+    return -1;
+  }
   // FIXME read input, throw up selector, etc.
+  notcurses_render(nc);
+sleep(40);
+  ncselector_destroy(cmdsel, NULL);
   return 0;
 }
 
@@ -139,7 +169,7 @@ input_loop(struct notcurses* nc, struct ncplane* map, struct ncplane* legend){
     ncplane_move_yx(map, mapy, mapx);
     ncplane_printf_aligned(legend, 0, NCALIGN_RIGHT, "x: %d y: %d", -mapx, -mapy);
     ncplane_move_top(celes[celidx]);
-    ncplane_move_yx(celes[celidx], dimy / 2, dimx / 2);
+    center_plane(nc, celes[celidx]);
     if(overworld_battle(nc, map, celes[0])){
       break;
     }
