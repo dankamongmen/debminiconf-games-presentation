@@ -55,24 +55,39 @@ do_battle(struct notcurses* nc, struct ncplane* ep, struct ncplane* player){
   struct ncplane* cmdp = ncplane_new(notcurses_stdplane(nc), 10, 40,
                                      ncplane_dim_y(notcurses_stdplane(nc)) - 10,
                                      0, NULL, NULL);
+  ncplane_set_base(cmdp, " ", NCSTYLE_NONE, 0);
   static struct ncselector_item items[] = {
-    { "Attack", "Attack", },
-    { "Magic", "Magic", },
-    { "Vomit intensely", "Vomit intensely", },
-    { "Run", "Run", },
+    { "Salaminize", "", },
+    { "Cast spell", "", },
+    { "Vomit intensely", "", },
+    { "Package it in AUR", "", },
+    { "Scurry in shame", "", },
   };
   struct ncselector_options sopts = {
     .title = "Action",
     .items = items,
+    .maxdisplay = 4,
+    .boxchannels = CHANNELS_RGB_INITIALIZER(0x40, 0x80, 0x40, 0x0, 0x0, 0x60),
+    .opchannels = CHANNELS_RGB_INITIALIZER(0xc0, 0xff, 0xc0, 0, 0, 0),
+    .titlechannels = CHANNELS_RGB_INITIALIZER(0xff, 0x80, 0xff, 0, 0, 0x60),
   };
   struct ncselector* cmdsel = ncselector_create(cmdp, &sopts);
   if(cmdsel == NULL){
     ncplane_destroy(cmdp);
     return -1;
   }
-  // FIXME read input, throw up selector, etc.
+  ncinput ni;
+  char32_t ch;
   notcurses_render(nc);
-sleep(40);
+  while((ch = notcurses_getc_blocking(nc, &ni))){
+    if(!ncselector_offer_input(cmdsel, &ni)){
+      if(ch == NCKEY_ENTER){
+        break;
+      }
+      // FIXME
+    }
+    notcurses_render(nc);
+  }
   ncselector_destroy(cmdsel, NULL);
   return 0;
 }
