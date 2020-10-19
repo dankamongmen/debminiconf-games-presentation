@@ -41,6 +41,45 @@ load_celes(struct notcurses* nc, struct ncvisual** ncvs, struct ncplane** celes)
 }
 
 static int
+do_battle(struct notcurses* nc, struct ncplane* ep, struct ncplane* player){
+  notcurses_render(nc);
+  // FIXME read input, throw up selector, etc.
+  return 0;
+}
+
+static int
+overworld_battle(struct notcurses* nc, struct ncplane* map, struct ncplane* player){
+  if(random() % 10 != 0){
+    return 0;
+  }
+  struct ncplane* copy = ncplane_dup(map, NULL);
+  if(!copy){
+    return -1;
+  }
+  struct ncvisual* ncv = ncvisual_from_file("Balsac.jpg");
+  if(ncv == NULL){
+    ncplane_destroy(copy);
+    return -1;
+  }
+  ncplane_greyscale(copy);
+  int dimy, dimx;
+  ncplane_dim_yx(notcurses_stdplane(nc), &dimy, &dimx);
+  const int ex = dimx / 4 * 3;
+  const int exoff = ncplane_align(notcurses_stdplane(nc), NCALIGN_CENTER, ex);
+  struct ncplane* ep = ncplane_new(notcurses_stdplane(nc), dimy / 4 * 3, ex, 1, exoff, NULL, NULL);
+  struct ncvisual_options vopts = {
+    .scaling = NCSCALE_STRETCH,
+    .n = ep,
+  };
+  ncvisual_render(nc, ncv, &vopts);
+  int r = do_battle(nc, ep, player);
+  ncplane_destroy(ep);
+  ncplane_destroy(copy);
+  ncvisual_destroy(ncv);
+  return r;
+}
+
+static int
 input_loop(struct notcurses* nc, struct ncplane* map, struct ncplane* legend){
   struct ncvisual* ncvs[4];
   struct ncplane* celes[4];
@@ -52,12 +91,14 @@ input_loop(struct notcurses* nc, struct ncplane* map, struct ncplane* legend){
   struct pollfd pfds[1] = {
     { .fd = fd, .events = POLLIN, },
   };
-  int mapy = 0, mapx = 0;
+  int mapy = -1279, mapx = -1184;
+  ncplane_move_yx(map, mapy, mapx);
   int dimy, dimx;
   ncplane_dim_yx(notcurses_stdplane(nc), &dimy, &dimx);
   int celidx = 1;
   ncplane_move_top(celes[celidx]);
   notcurses_render(nc);
+  // FIXME add repeating timerfd
   while((evs = poll(pfds, sizeof(pfds) / sizeof(*pfds), -1)) >= 0 || errno == EINTR){
     if(evs > 0){
       ncplane_move_bottom(celes[celidx]);
@@ -99,6 +140,9 @@ input_loop(struct notcurses* nc, struct ncplane* map, struct ncplane* legend){
     ncplane_printf_aligned(legend, 0, NCALIGN_RIGHT, "x: %d y: %d", -mapx, -mapy);
     ncplane_move_top(celes[celidx]);
     ncplane_move_yx(celes[celidx], dimy / 2, dimx / 2);
+    if(overworld_battle(nc, map, celes[0])){
+      break;
+    }
     notcurses_render(nc);
   }
   ncplane_destroy(legend);
