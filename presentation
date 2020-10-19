@@ -1,0 +1,68 @@
+(intro: 5 min)
+1. who are you and what the hell are you doing to my terminals?
+ - why notcurses? are you autistic, or just not very smart?
+
+You might expect that I am a graphics programmer, or perhaps even a front-end
+developer. Nah, HPC, big networking, and compilers. This was a lark, resulting
+from Thomas Dickey rejecting a few blingy patches.
+
+2. problems with Curses
+ - multithreaded support is lacking
+ - no EGC support
+ - no RGB
+3. problems with Curses replacements
+ - most are not in C
+ - no multimedia hooks (libtickit)
+ - Sixel is rarely supported
+4. notcurses model
+ - one standard plane matching rendering area
+ - z-axis of rectilinear planes of arbitrary size
+ - each cell has EGC, styling, and channels
+ - only ascii or utf8
+ - color blending
+5. current terminals
+ - alacritty: not in debian, not sure about fonts, emoji
+ - kitty: some problems with unexpected transparency
+ - skinnings of vte
+ - font/fontrenderingengine pain point
+6. future directions
+ - better reflow
+ - palettepusher
+ - improved painter's algorithm
+ - become a terminal, pty-in-a-pty, rebuilt screen in notcurses
+
+(demo: 10 min)
+0. show nesticle+notcurses; the fly honeys luv it
+1. let's make Debian Warrior!
+ - grab media
+    * map of final fantasy i overworld
+    * Celes character sprites
+    * picture of Balsac the Jaws of Death
+ - find offset of starting place
+ - math of pixel <> cell conversion
+2. create a context and add our character
+ - notcurses_init()
+ - ask for character's name
+ - load sprite in each form
+ - move each offscreen
+ - timerfd() epoll loop switches between planes
+ - bring new one onscreen, move current offscreen
+ - subbox with hp, mp, level
+3. load up background
+ - load background onto giant plane
+ - localize plane properly
+4. handle input
+ - add input fd to epoll(), direct to handler
+ - arrow keys and vi keys move character around on map
+5. contact with an enemy!
+ - after some number of steps, we contact an enemy
+ - bring up plane with image inside
+ - throw plane beneath this, 2 rows + cols bigger, throw on border
+ - throw up battle plane with scrolling
+ - throw up action selector
+6. intro screen
+ - rotating debian logo atop the word WARRIOR
+ - screen fade into part #1
+
+(q&a: 5 min)
+if no questions, run demo and give learned commentary
