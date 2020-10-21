@@ -28,7 +28,7 @@ center_plane(const struct notcurses* nc, struct ncplane* n){
   const struct ncplane* stdn = notcurses_stdplane_const(nc);
   ncplane_dim_yx(stdn, &dimy, &dimx);
   return ncplane_move_yx(n, ncplane_dim_y(stdn) / 2 - ncplane_dim_y(n) / 2,
-                         ncplane_dim_x(stdn) / 2 - ncplane_dim_x(n) / 2);
+                         ncplane_dim_x(stdn) / 2 - ncplane_dim_x(n) / 2 + 1);
 }
 
 static int
@@ -54,16 +54,16 @@ load_celes(struct notcurses* nc, struct ncvisual** ncvs, struct ncplane** celes)
 
 static int
 do_battle(struct notcurses* nc, struct ncplane* ep, struct ncplane* player){
-  struct ncplane* cmdp = ncplane_new(notcurses_stdplane(nc), 10, 40,
+  struct ncplane* cmdp = ncplane_new(notcurses_stdplane(nc), 10, 30,
                                      ncplane_dim_y(notcurses_stdplane(nc)) - 10,
-                                     0, NULL, NULL);
+                                     0, NULL, "acts");
   ncplane_set_base(cmdp, " ", NCSTYLE_NONE, 0);
   static struct ncselector_item items[] = {
     { "Salaminize", "", },
     { "Cast spell", "", },
     { "Vomit intensely", "", },
     { "Package it in AUR", "", },
-    { "Scurry in shame", "", },
+    { "Shameful scurry", "", },
   };
   struct ncselector_options sopts = {
     .title = "Action",
@@ -78,6 +78,14 @@ do_battle(struct notcurses* nc, struct ncplane* ep, struct ncplane* player){
     ncplane_destroy(cmdp);
     return -1;
   }
+  struct ncplane* plotp = ncplane_new(notcurses_stdplane(nc), 8, 40,
+                                      ncplane_dim_y(notcurses_stdplane(nc)) - 8,
+                                      30, NULL, "plot");
+  uint64_t channels = CHANNELS_RGB_INITIALIZER(0, 0, 0, 0, 0, 0);
+  ncplane_set_base(plotp, "", 0, channels);
+  ncplane_set_scrolling(plotp, true);
+  ncplane_set_fg_rgb(plotp, 0x40d0a0);
+  ncplane_printf(plotp, "Balsac the Jaws of Death approaches!");
   ncinput ni;
   char32_t ch;
   notcurses_render(nc);
@@ -90,6 +98,7 @@ do_battle(struct notcurses* nc, struct ncplane* ep, struct ncplane* player){
     }
     notcurses_render(nc);
   }
+  ncplane_destroy(plotp);
   ncselector_destroy(cmdsel, NULL);
   return 0;
 }
