@@ -6,15 +6,20 @@
 
 #define DWBLITTER NCBLIT_2x2
 
+static int
+ncplane_make_transparent(struct ncplane* ncp){
+  uint64_t channels = 0;
+  channels_set_fg_alpha(&channels, CELL_ALPHA_TRANSPARENT);
+  channels_set_bg_alpha(&channels, CELL_ALPHA_TRANSPARENT);
+  return ncplane_set_base(ncp, "", 0, channels);
+}
+
 static struct ncplane*
 legendplane(struct notcurses* nc){
   const int dimx = ncplane_dim_x(notcurses_stdplane(nc));
   struct ncplane* lp = ncplane_new(notcurses_stdplane(nc), 1, dimx, 0, 0, NULL, "lgnd");
   if(lp){
-    uint64_t channels = 0;
-    channels_set_fg_alpha(&channels, CELL_ALPHA_TRANSPARENT);
-    channels_set_bg_alpha(&channels, CELL_ALPHA_TRANSPARENT);
-    ncplane_set_base(lp, "", 0, channels);
+    ncplane_make_transparent(lp);
     ncplane_set_fg_rgb(lp, 0);
     ncplane_set_fg_alpha(lp, CELL_ALPHA_HIGHCONTRAST);
   }
@@ -123,8 +128,10 @@ overworld_battle(struct notcurses* nc, struct ncplane* map, struct ncplane* play
   const int ex = dimx / 4 * 3;
   const int exoff = ncplane_align(notcurses_stdplane(nc), NCALIGN_CENTER, ex);
   struct ncplane* ep = ncplane_new(notcurses_stdplane(nc), dimy / 4 * 3, ex, 1, exoff, NULL, NULL);
+  ncplane_make_transparent(ep);
   struct ncvisual_options vopts = {
-    .scaling = NCSCALE_STRETCH,
+    .scaling = NCSCALE_SCALE,
+    .blitter = NCBLIT_2x2,
     .n = ep,
   };
   ncvisual_render(nc, ncv, &vopts);
