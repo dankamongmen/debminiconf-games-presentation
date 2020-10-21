@@ -4,6 +4,8 @@
 #include <sys/poll.h>
 #include <notcurses/notcurses.h>
 
+#define DWBLITTER NCBLIT_2x2
+
 static struct ncplane*
 legendplane(struct notcurses* nc){
   const int dimx = ncplane_dim_x(notcurses_stdplane(nc));
@@ -41,7 +43,7 @@ load_celes(struct notcurses* nc, struct ncvisual** ncvs, struct ncplane** celes)
     }
     struct ncvisual_options vopts = {
       .scaling = NCSCALE_NONE,
-      .blitter = NCBLIT_2x2,
+      .blitter = DWBLITTER,
     };
     celes[i] = ncvisual_render(nc, ncvs[i], &vopts);
     ncplane_move_bottom(celes[i]);
@@ -94,7 +96,7 @@ do_battle(struct notcurses* nc, struct ncplane* ep, struct ncplane* player){
 
 static int
 overworld_battle(struct notcurses* nc, struct ncplane* map, struct ncplane* player){
-  if(random() % 20 != 0){
+  if(random() % 100 != 0){
     return 0;
   }
   struct ncplane* copy = ncplane_dup(map, NULL);
@@ -122,6 +124,24 @@ overworld_battle(struct notcurses* nc, struct ncplane* map, struct ncplane* play
   ncplane_destroy(copy);
   ncvisual_destroy(ncv);
   return r;
+}
+
+static int
+advance_player(struct notcurses* nc, struct ncvisual* ncv, struct ncplane* ncp){
+  struct ncvisual_options vopts = {
+    .scaling = NCSCALE_NONE,
+    .blitter = DWBLITTER,
+    .n = ncp,
+  };
+  if(ncvisual_decode_loop(ncv) < 0){
+    return -1;
+  }
+  if(ncvisual_render(nc, ncv, &vopts) == NULL){
+    return -1;
+  }
+  ncplane_move_top(ncp);
+  center_plane(nc, ncp);
+  return 0;
 }
 
 static int
@@ -184,8 +204,7 @@ input_loop(struct notcurses* nc, struct ncplane* map, struct ncplane* legend){
     }
     ncplane_move_yx(map, mapy, mapx);
     ncplane_printf_aligned(legend, 0, NCALIGN_RIGHT, "x: %d y: %d", -mapx, -mapy);
-    ncplane_move_top(celes[celidx]);
-    center_plane(nc, celes[celidx]);
+    advance_player(nc, ncvs[celidx], celes[celidx]);
     if(overworld_battle(nc, map, celes[0])){
       break;
     }
@@ -203,7 +222,7 @@ debwarrior(struct notcurses* nc){
   }
   struct ncvisual_options vopts = {
     .scaling = NCSCALE_NONE,
-    .blitter = NCBLIT_2x2,
+    .blitter = DWBLITTER,
   };
   struct ncplane* map = ncvisual_render(nc, ncv, &vopts);
   struct ncplane* legend = legendplane(nc);
