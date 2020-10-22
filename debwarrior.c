@@ -87,23 +87,34 @@ load_celes(struct notcurses* nc, struct ncvisual** ncvs, struct ncplane** celes)
 static int
 battle_loop(struct notcurses* nc, struct ncplane* plotp, player *p,
             struct ncselector* cmdsel){
-  bool pturn = true;
-
   while(p->hp > 0){
+    ncplane_set_fg_rgb(plotp, 0xf0f0f0);
+    ncplane_printf(plotp, "Choose an action.\n");
+    ncplane_set_fg_rgb(plotp, 0x00ff88);
+    notcurses_render(nc);
     ncinput ni;
     char32_t ch;
     notcurses_render(nc);
     while((ch = notcurses_getc_blocking(nc, &ni))){
       if(!ncselector_offer_input(cmdsel, &ni)){
         if(ch == NCKEY_ENTER){
+          ncplane_printf(plotp, "Your attack is ineffective against the almighty WarMECH!\n");
           break;
         }
-        // FIXME
       }
       notcurses_render(nc);
     }
+    ncplane_printf(plotp, "WarMECH attacks with NUKE\n");
+    int damage = random() % 5 + 2;
+    ncplane_printf(plotp, "You are hit for %d HP\n", damage);
+    if((p->hp -= damage) < 0){
+      p->hp = 0;
+    }
+    update_stats(p);
+    notcurses_render(nc);
   }
-  ncplane_printf(plotp, "You are dead");
+  ncplane_set_fg_rgb(plotp, 0xff8080);
+  ncplane_printf(plotp, "Thou art dead, bitch 💣\n");
   notcurses_render(nc);
   return -1;
 }
@@ -134,14 +145,18 @@ do_battle(struct notcurses* nc, struct ncplane* ep, player* p){
     ncplane_destroy(cmdp);
     return -1;
   }
-  struct ncplane* plotp = ncplane_new(notcurses_stdplane(nc), 8, 40,
+  struct ncplane* plotp = ncplane_new(notcurses_stdplane(nc), 8,
+                                      ncplane_dim_x(notcurses_stdplane(nc)) - ncplane_dim_x(cmdp),
                                       ncplane_dim_y(notcurses_stdplane(nc)) - 8,
-                                      30, NULL, "plot");
+                                      ncplane_dim_x(cmdp), NULL, "plot");
   ncplane_make_opaque(plotp);
   ncplane_set_scrolling(plotp, true);
   ncplane_set_fg_rgb(plotp, 0x40f0c0);
-  ncplane_printf(plotp, "WarMECH approaches!");
-  battle_loop(nc, plotp, p, cmdsel);
+  ncplane_printf(plotp, "WarMECH approaches!\n");
+  ncplane_move_top(p->splane);
+  if(battle_loop(nc, plotp, p, cmdsel)){
+    return -1;
+  }
   ncplane_destroy(plotp);
   ncselector_destroy(cmdsel, NULL);
   return 0;
@@ -219,7 +234,6 @@ input_loop(struct notcurses* nc, player* p, struct ncplane* map, struct ncplane*
   int celidx = 1;
   ncplane_move_top(celes[celidx]);
   notcurses_render(nc);
-  // FIXME add repeating timerfd
   while((evs = poll(pfds, sizeof(pfds) / sizeof(*pfds), -1)) >= 0 || errno == EINTR){
     if(evs > 0){
       ncplane_move_bottom(celes[celidx]);
@@ -285,13 +299,18 @@ display_logo(struct notcurses* nc){
   ncplane_set_fg_rgb(n, 0xffffff);
   ncplane_putstr_aligned(n, ncplane_dim_y(n) - 1, NCALIGN_CENTER, "press enter");
   notcurses_render(nc);
+  ncvisual_destroy(logo);
+  return 0;
+}
+
+static int
+finalize(struct notcurses* nc){
   char32_t c;
   while((c = notcurses_getc_blocking(nc, NULL)) != -1){
     if(c == NCKEY_ENTER){
       break;
     }
   }
-  ncvisual_destroy(logo);
   return 0;
 }
 
@@ -312,7 +331,6 @@ debwarrior(struct notcurses* nc){
     return -1;
   }
   struct ncplane_options nopts = {
-    .y = ncplane_dim_y(notcurses_stdplane(nc)) - 1,
     .horiz = { .align = NCALIGN_CENTER, },
     .rows = 1,
     .cols = 16,
@@ -332,11 +350,15 @@ debwarrior(struct notcurses* nc){
   ncplane_yx(map, &mapy, &mapx);
   update_legend(map, legend, mapy, mapx);
   update_stats(&p);
+  finalize(nc);
   return input_loop(nc, &p, map, legend);
 }
 
 int main(void){
-  struct notcurses* nc = notcurses_init(NULL, NULL);
+  struct notcurses_options nopts = {
+    .flags = NCOPTION_NO_ALTERNATE_SCREEN,
+  };
+  struct notcurses* nc = notcurses_init(&nopts, NULL);
   if(nc == NULL){
     return EXIT_FAILURE;
   }
