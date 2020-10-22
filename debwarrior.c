@@ -85,7 +85,31 @@ load_celes(struct notcurses* nc, struct ncvisual** ncvs, struct ncplane** celes)
 }
 
 static int
-do_battle(struct notcurses* nc, struct ncplane* ep, struct ncplane* player){
+battle_loop(struct notcurses* nc, struct ncplane* plotp, player *p,
+            struct ncselector* cmdsel){
+  bool pturn = true;
+
+  while(p->hp > 0){
+    ncinput ni;
+    char32_t ch;
+    notcurses_render(nc);
+    while((ch = notcurses_getc_blocking(nc, &ni))){
+      if(!ncselector_offer_input(cmdsel, &ni)){
+        if(ch == NCKEY_ENTER){
+          break;
+        }
+        // FIXME
+      }
+      notcurses_render(nc);
+    }
+  }
+  ncplane_printf(plotp, "You are dead");
+  notcurses_render(nc);
+  return -1;
+}
+
+static int
+do_battle(struct notcurses* nc, struct ncplane* ep, player* p){
   struct ncplane* cmdp = ncplane_new(notcurses_stdplane(nc), 10, 30,
                                      ncplane_dim_y(notcurses_stdplane(nc)) - 10,
                                      0, NULL, "acts");
@@ -117,25 +141,14 @@ do_battle(struct notcurses* nc, struct ncplane* ep, struct ncplane* player){
   ncplane_set_scrolling(plotp, true);
   ncplane_set_fg_rgb(plotp, 0x40f0c0);
   ncplane_printf(plotp, "WarMECH approaches!");
-  ncinput ni;
-  char32_t ch;
-  notcurses_render(nc);
-  while((ch = notcurses_getc_blocking(nc, &ni))){
-    if(!ncselector_offer_input(cmdsel, &ni)){
-      if(ch == NCKEY_ENTER){
-        break;
-      }
-      // FIXME
-    }
-    notcurses_render(nc);
-  }
+  battle_loop(nc, plotp, p, cmdsel);
   ncplane_destroy(plotp);
   ncselector_destroy(cmdsel, NULL);
   return 0;
 }
 
 static int
-overworld_battle(struct notcurses* nc, struct ncplane* map, struct ncplane* player){
+overworld_battle(struct notcurses* nc, struct ncplane* map, player *p){
   if(random() % 100 != 0){
     return 0;
   }
@@ -161,7 +174,7 @@ overworld_battle(struct notcurses* nc, struct ncplane* map, struct ncplane* play
     .n = ep,
   };
   ncvisual_render(nc, ncv, &vopts);
-  int r = do_battle(nc, ep, player);
+  int r = do_battle(nc, ep, p);
   ncplane_destroy(ep);
   ncplane_destroy(copy);
   ncvisual_destroy(ncv);
@@ -247,7 +260,7 @@ input_loop(struct notcurses* nc, player* p, struct ncplane* map, struct ncplane*
     }
     update_legend(map, legend, mapy, mapx);
     advance_player(nc, p, ncvs[celidx], celes[celidx]);
-    if(overworld_battle(nc, map, celes[0])){
+    if(overworld_battle(nc, map, p)){
       break;
     }
     notcurses_render(nc);
@@ -257,7 +270,34 @@ input_loop(struct notcurses* nc, player* p, struct ncplane* map, struct ncplane*
 }
 
 static int
+display_logo(struct notcurses* nc){
+  struct ncvisual* logo = ncvisual_from_file("logo.png");
+  struct ncvisual_options vopts = {
+    .scaling = NCSCALE_STRETCH,
+  };
+  struct ncplane* n = ncvisual_render(nc, logo, &vopts);
+  if(n == NULL){
+    return -1;
+  }
+  notcurses_render(nc);
+  struct timespec ts = { .tv_sec = 1, .tv_nsec = 0, };
+  ncplane_fadein(n, &ts, NULL, NULL);
+  ncplane_set_fg_rgb(n, 0xffffff);
+  ncplane_putstr_aligned(n, ncplane_dim_y(n) - 1, NCALIGN_CENTER, "press enter");
+  notcurses_render(nc);
+  char32_t c;
+  while((c = notcurses_getc_blocking(nc, NULL)) != -1){
+    if(c == NCKEY_ENTER){
+      break;
+    }
+  }
+  ncvisual_destroy(logo);
+  return 0;
+}
+
+static int
 debwarrior(struct notcurses* nc){
+  display_logo(nc);
   struct ncvisual* ncv = ncvisual_from_file("FinalFantasyOverworld.png");
   if(!ncv){
     return -1;
