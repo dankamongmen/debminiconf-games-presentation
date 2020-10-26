@@ -79,7 +79,7 @@ battle_loop(struct notcurses* nc, struct ncplane* plotp, player *p,
     notcurses_render(nc);
   }
   ncplane_set_fg_rgb(plotp, 0xff8080);
-  ncplane_printf(plotp, "Thou art dead, bitch 💣\n");
+  ncplane_printf(plotp, "Thou art dead, bitch 💣\n\n");
   notcurses_render(nc);
   return -1;
 }
@@ -87,11 +87,10 @@ battle_loop(struct notcurses* nc, struct ncplane* plotp, player *p,
 static int
 do_battle(struct notcurses* nc, struct ncplane* ep, player* p){
   struct ncplane* cmdp = ncplane_new(notcurses_stdplane(nc), 10, 30,
-                                     ncplane_dim_y(notcurses_stdplane(nc)) - 10,
-                                     0, NULL, "acts");
+                            ncplane_dim_y(notcurses_stdplane(nc)) - 10,
+                            0, NULL, NULL);
   ncplane_set_base(cmdp, " ", NCSTYLE_NONE, 0);
   static struct ncselector_item items[] = {
-    { "Salaminize", "", },
     { "Cast spell", "", },
     { "Vomit intensely", "", },
     { "Package it in AUR", "", },
@@ -111,9 +110,9 @@ do_battle(struct notcurses* nc, struct ncplane* ep, player* p){
     return -1;
   }
   struct ncplane* plotp = ncplane_new(notcurses_stdplane(nc), 8,
-                                      ncplane_dim_x(notcurses_stdplane(nc)) - ncplane_dim_x(cmdp),
-                                      ncplane_dim_y(notcurses_stdplane(nc)) - 8,
-                                      ncplane_dim_x(cmdp), NULL, "plot");
+                   ncplane_dim_x(notcurses_stdplane(nc)) - ncplane_dim_x(cmdp),
+                   ncplane_dim_y(notcurses_stdplane(nc)) - 8,
+                   ncplane_dim_x(cmdp), NULL, NULL);
   ncplane_make_opaque(plotp);
   ncplane_set_scrolling(plotp, true);
   ncplane_set_fg_rgb(plotp, 0x40f0c0);
@@ -146,7 +145,8 @@ overworld_battle(struct notcurses* nc, struct ncplane* map, player *p){
   ncplane_dim_yx(notcurses_stdplane(nc), &dimy, &dimx);
   const int ex = dimx / 4 * 3;
   const int exoff = ncplane_align(notcurses_stdplane(nc), NCALIGN_CENTER, ex);
-  struct ncplane* ep = ncplane_new(notcurses_stdplane(nc), dimy / 4 * 3, ex, 1, exoff, NULL, NULL);
+  struct ncplane* ep = ncplane_new(notcurses_stdplane(nc), dimy / 4 * 3,
+                                   ex, 1, exoff, NULL, NULL);
   uint64_t channels = 0;
   channels_set_fg_alpha(&channels, CELL_ALPHA_TRANSPARENT);
   channels_set_bg_alpha(&channels, CELL_ALPHA_TRANSPARENT);
