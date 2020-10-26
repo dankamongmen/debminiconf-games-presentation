@@ -5,8 +5,7 @@
 
 static int
 ncplane_make_opaque(struct ncplane* ncp){
-  uint64_t channels = CHANNELS_RGB_INITIALIZER(0, 0, 0, 0, 0, 0);
-  return ncplane_set_base(ncp, " ", 0, channels);
+  return ncplane_set_base(ncp, " ", 0, CHANNELS_RGB_INITIALIZER(0, 0, 0, 0, 0, 0));
 }
 
 static int
