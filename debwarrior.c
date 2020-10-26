@@ -23,7 +23,6 @@ center_plane(struct ncplane* n){
 
 typedef struct player {
   int hp;
-  int mp;
   struct ncplane* splane; // stats plane
 } player;
 
@@ -31,8 +30,7 @@ static int
 update_stats(player* p){
   ncplane_erase(p->splane);
   ncplane_set_fg_rgb(p->splane, 0x00ffff);
-  ncplane_printf_aligned(p->splane, 0, NCALIGN_CENTER, "HP: %d MP: %d",
-                         p->hp, p->mp);
+  ncplane_printf_aligned(p->splane, 0, NCALIGN_CENTER, "HP: %d", p->hp);
   return 0;
 }
 
@@ -237,7 +235,6 @@ input_loop(struct notcurses* nc, player* p, struct ncplane* map){
         }
       }
     }
-    // FIXME advance ncvisual via decode
     if(mapx < -(2048 - dimx)){
       mapx = -(2048 - dimx);
     }else if(mapx > 0){
@@ -279,17 +276,6 @@ display_logo(struct notcurses* nc){
 }
 
 static int
-finalize(struct notcurses* nc){
-  char32_t c;
-  while((c = notcurses_getc_blocking(nc, NULL)) != -1){
-    if(c == NCKEY_ENTER){
-      break;
-    }
-  }
-  return 0;
-}
-
-static int
 debwarrior(struct notcurses* nc){
   display_logo(nc);
   struct ncvisual* ncv = ncvisual_from_file("ffi.png");
@@ -310,7 +296,6 @@ debwarrior(struct notcurses* nc){
   };
   player p = {
     .hp = random() % 14 + 5,
-    .mp = random() % 10 + 2,
     .splane = ncplane_create(notcurses_stdplane(nc), &nopts),
   };
   if(!p.splane){
@@ -320,7 +305,12 @@ debwarrior(struct notcurses* nc){
   int mapy, mapx;
   ncplane_yx(map, &mapy, &mapx);
   update_stats(&p);
-  finalize(nc);
+  char32_t c;
+  while((c = notcurses_getc_blocking(nc, NULL)) != -1){
+    if(c == NCKEY_ENTER){
+      break;
+    }
+  }
   return input_loop(nc, &p, map);
 }
 
