@@ -1,7 +1,4 @@
-#include <errno.h>
-#include <unistd.h>
 #include <stdlib.h>
-#include <sys/poll.h>
 #include <notcurses/notcurses.h>
 
 #define DWBLITTER NCBLIT_2x2
@@ -196,11 +193,6 @@ input_loop(struct notcurses* nc, player* p, struct ncplane* map){
   if(load_celes(nc, ncvs, celes)){
     return -1;
   }
-  int fd = notcurses_inputready_fd(nc);
-  int evs;
-  struct pollfd pfds[1] = {
-    { .fd = fd, .events = POLLIN, },
-  };
   int mapy = -1279, mapx = -1184; // FIXME define in terms of screen size
   ncplane_move_yx(map, mapy, mapx);
   int dimy, dimx;
@@ -208,32 +200,25 @@ input_loop(struct notcurses* nc, player* p, struct ncplane* map){
   int celidx = 1;
   ncplane_move_top(celes[celidx]);
   notcurses_render(nc);
-  while((evs = poll(pfds, sizeof(pfds) / sizeof(*pfds), -1)) >= 0 || errno == EINTR){
-    if(evs > 0){
-      ncplane_move_bottom(celes[celidx]);
-      if(pfds[0].revents){
-        ncinput ni;
-        char32_t ch = notcurses_getc_nblock(nc, &ni);
-        if(ch <= 0){
-          break;
-        }else if(ch == 'q'){
-          return 0;
-        }else if(ch == NCKEY_LEFT || ch == 'h'){
-          mapx += 8;
-          celidx = 0;
-        }else if(ch == NCKEY_RIGHT || ch == 'l'){
-          mapx -= 8;
-          celidx = 2;
-        }else if(ch == NCKEY_UP || ch == 'k'){
-          mapy += 8;
-          celidx = 3;
-        }else if(ch == NCKEY_DOWN || ch == 'j'){
-          mapy -= 8;
-          celidx = 1;
-        }else if(ch == NCKEY_RESIZE){
-          notcurses_refresh(nc, &dimy, &dimx);
-        }
-      }
+  char32_t c;
+  while((c = notcurses_getc_blocking(nc, NULL)) != -1){
+    ncplane_move_bottom(celes[celidx]);
+    if(c == 'q'){
+      return 0;
+    }else if(c == NCKEY_LEFT || c == 'h'){
+      mapx += 8;
+      celidx = 0;
+    }else if(c == NCKEY_RIGHT || c == 'l'){
+      mapx -= 8;
+      celidx = 2;
+    }else if(c == NCKEY_UP || c == 'k'){
+      mapy += 8;
+      celidx = 3;
+    }else if(c == NCKEY_DOWN || c == 'j'){
+      mapy -= 8;
+      celidx = 1;
+    }else if(c == NCKEY_RESIZE){
+      notcurses_refresh(nc, &dimy, &dimx);
     }
     if(mapx < -(2048 - dimx)){
       mapx = -(2048 - dimx);
