@@ -2,11 +2,6 @@
 #include <notcurses/notcurses.h>
 
 static int
-ncplane_make_opaque(struct ncplane* ncp){
-  return ncplane_set_base(ncp, " ", 0, CHANNELS_RGB_INITIALIZER(0, 0, 0, 0, 0, 0));
-}
-
-static int
 center_plane(struct ncplane* n){
   int dimy, dimx;
   const struct ncplane* p = ncplane_parent_const(n);
@@ -112,7 +107,7 @@ do_battle(struct notcurses* nc, struct ncplane* ep, player* p){
                    ncplane_dim_x(notcurses_stdplane(nc)) - ncplane_dim_x(cmdp),
                    ncplane_dim_y(notcurses_stdplane(nc)) - 8,
                    ncplane_dim_x(cmdp), NULL, NULL);
-  ncplane_make_opaque(plotp);
+  ncplane_set_base(plotp, " ", 0, CHANNELS_RGB_INITIALIZER(0, 0, 0, 0, 0, 0));
   ncplane_set_scrolling(plotp, true);
   ncplane_set_fg_rgb(plotp, 0x40f0c0);
   ncplane_printf(plotp, "WarMECH approaches!\n");
@@ -279,7 +274,7 @@ debwarrior(struct notcurses* nc){
   if(!p.splane){
     return -1;
   }
-  ncplane_make_opaque(p.splane);
+  ncplane_set_base(p.splane, " ", 0, CHANNELS_RGB_INITIALIZER(0, 0, 0, 0, 0, 0));
   int mapy, mapx;
   ncplane_yx(map, &mapy, &mapx);
   update_stats(&p);
