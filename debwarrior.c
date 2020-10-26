@@ -239,7 +239,6 @@ display_logo(struct notcurses* nc){
   if(n == NULL){
     return -1;
   }
-  notcurses_render(nc);
   struct timespec ts = { .tv_sec = 1, .tv_nsec = 0, };
   ncplane_fadein(n, &ts, NULL, NULL);
   ncplane_set_fg_rgb(n, 0xffffff);
