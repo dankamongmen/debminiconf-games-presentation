@@ -20,18 +20,6 @@ ncplane_make_opaque(struct ncplane* ncp){
   return ncplane_set_base(ncp, " ", 0, channels);
 }
 
-static struct ncplane*
-legendplane(struct notcurses* nc){
-  const int dimx = ncplane_dim_x(notcurses_stdplane(nc));
-  struct ncplane* lp = ncplane_new(notcurses_stdplane(nc), 1, dimx, 0, 0, NULL, "lgnd");
-  if(lp){
-    ncplane_make_transparent(lp);
-    ncplane_set_fg_rgb(lp, 0);
-    ncplane_set_fg_alpha(lp, CELL_ALPHA_HIGHCONTRAST);
-  }
-  return lp;
-}
-
 static int
 center_plane(struct ncplane* n){
   int dimy, dimx;
@@ -43,7 +31,6 @@ center_plane(struct ncplane* n){
 
 typedef struct player {
   int hp;
-  int mp;
   struct ncplane* splane; // stats plane
 } player;
 
@@ -51,15 +38,7 @@ static int
 update_stats(player* p){
   ncplane_erase(p->splane);
   ncplane_set_fg_rgb(p->splane, 0x00ffff);
-  ncplane_printf_aligned(p->splane, 0, NCALIGN_CENTER, "HP: %d MP: %d",
-                         p->hp, p->mp);
-  return 0;
-}
-
-static int
-update_legend(struct ncplane* map, struct ncplane* l, int y, int x){
-  ncplane_move_yx(map, y, x);
-  ncplane_printf_aligned(l, 0, NCALIGN_RIGHT, "x: %d y: %d", -x, -y);
+  ncplane_printf_aligned(p->splane, 0, NCALIGN_CENTER, "HP: %d", p->hp);
   return 0;
 }
 
@@ -216,7 +195,7 @@ advance_player(struct notcurses* nc, player* p, struct ncvisual* ncv, struct ncp
 }
 
 static int
-input_loop(struct notcurses* nc, player* p, struct ncplane* map, struct ncplane* legend){
+input_loop(struct notcurses* nc, player* p, struct ncplane* map){
   struct ncvisual* ncvs[4];
   struct ncplane* celes[4];
   if(load_celes(nc, ncvs, celes)){
@@ -243,7 +222,6 @@ input_loop(struct notcurses* nc, player* p, struct ncplane* map, struct ncplane*
         if(ch <= 0){
           break;
         }else if(ch == 'q'){
-          ncplane_destroy(legend);
           return 0;
         }else if(ch == NCKEY_LEFT || ch == 'h'){
           mapx += 8;
@@ -272,14 +250,12 @@ input_loop(struct notcurses* nc, player* p, struct ncplane* map, struct ncplane*
     }else if(mapy < -(2048 - dimy)){
       mapy = -(2048 - dimy);
     }
-    update_legend(map, legend, mapy, mapx);
     advance_player(nc, p, ncvs[celidx], celes[celidx]);
     if(overworld_battle(nc, map, p)){
       break;
     }
     notcurses_render(nc);
   }
-  ncplane_destroy(legend);
   return -1;
 }
 
@@ -327,10 +303,6 @@ debwarrior(struct notcurses* nc){
     .blitter = DWBLITTER,
   };
   struct ncplane* map = ncvisual_render(nc, ncv, &vopts);
-  struct ncplane* legend = legendplane(nc);
-  if(legend == NULL){
-    return -1;
-  }
   struct ncplane_options nopts = {
     .horiz = { .align = NCALIGN_CENTER, },
     .rows = 1,
@@ -340,7 +312,6 @@ debwarrior(struct notcurses* nc){
   };
   player p = {
     .hp = random() % 14 + 5,
-    .mp = random() % 10 + 2,
     .splane = ncplane_create(notcurses_stdplane(nc), &nopts),
   };
   if(!p.splane){
@@ -349,10 +320,9 @@ debwarrior(struct notcurses* nc){
   ncplane_make_opaque(p.splane);
   int mapy, mapx;
   ncplane_yx(map, &mapy, &mapx);
-  update_legend(map, legend, mapy, mapx);
   update_stats(&p);
   finalize(nc);
-  return input_loop(nc, &p, map, legend);
+  return input_loop(nc, &p, map);
 }
 
 int main(void){
