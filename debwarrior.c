@@ -164,7 +164,7 @@ do_battle(struct notcurses* nc, struct ncplane* ep, player* p){
 
 static int
 overworld_battle(struct notcurses* nc, struct ncplane* map, player *p){
-  if(random() % 100 != 0){
+  if(random() % 30 != 0){
     return 0;
   }
   struct ncplane* copy = ncplane_dup(map, NULL);
@@ -297,6 +297,7 @@ display_logo(struct notcurses* nc){
   struct timespec ts = { .tv_sec = 1, .tv_nsec = 0, };
   ncplane_fadein(n, &ts, NULL, NULL);
   ncplane_set_fg_rgb(n, 0xffffff);
+  ncplane_set_styles(n, NCSTYLE_BOLD | NCSTYLE_ITALIC);
   ncplane_putstr_aligned(n, ncplane_dim_y(n) - 1, NCALIGN_CENTER, "press enter");
   notcurses_render(nc);
   ncvisual_destroy(logo);
@@ -317,7 +318,7 @@ finalize(struct notcurses* nc){
 static int
 debwarrior(struct notcurses* nc){
   display_logo(nc);
-  struct ncvisual* ncv = ncvisual_from_file("FinalFantasyOverworld.png");
+  struct ncvisual* ncv = ncvisual_from_file("ffi.png");
   if(!ncv){
     return -1;
   }
@@ -356,7 +357,7 @@ debwarrior(struct notcurses* nc){
 
 int main(void){
   struct notcurses_options nopts = {
-    .flags = NCOPTION_NO_ALTERNATE_SCREEN,
+    .flags = NCOPTION_NO_ALTERNATE_SCREEN | NCOPTION_SUPPRESS_BANNERS,
   };
   struct notcurses* nc = notcurses_init(&nopts, NULL);
   if(nc == NULL){
