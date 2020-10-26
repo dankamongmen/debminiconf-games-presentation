@@ -7,14 +7,6 @@
 #define DWBLITTER NCBLIT_2x2
 
 static int
-ncplane_make_transparent(struct ncplane* ncp){
-  uint64_t channels = 0;
-  channels_set_fg_alpha(&channels, CELL_ALPHA_TRANSPARENT);
-  channels_set_bg_alpha(&channels, CELL_ALPHA_TRANSPARENT);
-  return ncplane_set_base(ncp, "", 0, channels);
-}
-
-static int
 ncplane_make_opaque(struct ncplane* ncp){
   uint64_t channels = CHANNELS_RGB_INITIALIZER(0, 0, 0, 0, 0, 0);
   return ncplane_set_base(ncp, " ", 0, channels);
@@ -163,7 +155,10 @@ overworld_battle(struct notcurses* nc, struct ncplane* map, player *p){
   const int ex = dimx / 4 * 3;
   const int exoff = ncplane_align(notcurses_stdplane(nc), NCALIGN_CENTER, ex);
   struct ncplane* ep = ncplane_new(notcurses_stdplane(nc), dimy / 4 * 3, ex, 1, exoff, NULL, NULL);
-  ncplane_make_transparent(ep);
+  uint64_t channels = 0;
+  channels_set_fg_alpha(&channels, CELL_ALPHA_TRANSPARENT);
+  channels_set_bg_alpha(&channels, CELL_ALPHA_TRANSPARENT);
+  ncplane_set_base(ep, "", 0, channels);
   struct ncvisual_options vopts = {
     .scaling = NCSCALE_SCALE,
     .blitter = NCBLIT_2x2,
