@@ -1,8 +1,6 @@
 #include <stdlib.h>
 #include <notcurses/notcurses.h>
 
-#define DWBLITTER NCBLIT_2x2
-
 static int
 ncplane_make_opaque(struct ncplane* ncp){
   return ncplane_set_base(ncp, " ", 0, CHANNELS_RGB_INITIALIZER(0, 0, 0, 0, 0, 0));
@@ -42,7 +40,7 @@ load_celes(struct notcurses* nc, struct ncvisual** ncvs, struct ncplane** celes)
     }
     struct ncvisual_options vopts = {
       .scaling = NCSCALE_NONE,
-      .blitter = DWBLITTER,
+      .blitter = NCBLIT_2x2,
     };
     celes[i] = ncvisual_render(nc, ncvs[i], &vopts);
     ncplane_move_bottom(celes[i]);
@@ -170,7 +168,7 @@ static int
 advance_player(struct notcurses* nc, player* p, struct ncvisual* ncv, struct ncplane* ncp){
   struct ncvisual_options vopts = {
     .scaling = NCSCALE_NONE,
-    .blitter = DWBLITTER,
+    .blitter = NCBLIT_2x2,
     .n = ncp,
   };
   if(ncvisual_decode_loop(ncv) < 0){
@@ -268,14 +266,13 @@ debwarrior(struct notcurses* nc){
   }
   struct ncvisual_options vopts = {
     .scaling = NCSCALE_NONE,
-    .blitter = DWBLITTER,
+    .blitter = NCBLIT_2x2,
   };
   struct ncplane* map = ncvisual_render(nc, ncv, &vopts);
   struct ncplane_options nopts = {
     .horiz = { .align = NCALIGN_CENTER, },
     .rows = 1,
     .cols = 16,
-    .name = "play",
     .flags = NCPLANE_OPTION_HORALIGNED,
   };
   player p = {
