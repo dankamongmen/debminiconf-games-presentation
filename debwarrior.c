@@ -177,17 +177,28 @@ advance_player(struct notcurses* nc, player* p, struct ncvisual* ncv, struct ncp
   return 0;
 }
 
+struct mapdata {
+  struct ncplane* map;
+  int y;
+  int x;
+  int toy;
+  int tox;
+};
+
 static int
-input_loop(struct notcurses* nc, player* p, struct ncplane* map){
+input_loop(struct notcurses* nc, player* p, struct mapdata* mapd){
+  struct ncplane* map = mapd->map;
   struct ncvisual* ncvs[4];
   struct ncplane* celes[4];
   if(load_celes(nc, ncvs, celes)){
     return -1;
   }
-  int mapy = -810, mapx = -1187;
-  ncplane_move_yx(map, mapy, mapx);
   int dimy, dimx;
   ncplane_dim_yx(notcurses_stdplane(nc), &dimy, &dimx);
+  // coneria is at 2625, 2425
+  int mapy = ((-2616.0 / mapd->y) * (mapd->y / mapd->toy)) + (dimy / mapd->toy);
+  int mapx = ((-2438.0 / mapd->x) * (mapd->x / mapd->tox)) + (dimx / mapd->tox);
+  ncplane_move_yx(map, mapy, mapx);
   int celidx = 1;
   ncplane_move_top(celes[celidx]);
   notcurses_render(nc);
@@ -260,7 +271,13 @@ debwarrior(struct notcurses* nc){
   struct ncvisual_options vopts = {
     .blitter = NCBLIT_3x2,
   };
-  struct ncplane* map = ncvisual_render(nc, ncv, &vopts);
+  struct mapdata mapd = {
+    .map = ncvisual_render(nc, ncv, &vopts),
+  };
+  if(mapd.map == NULL){
+    return -1;
+  }
+  ncvisual_geom(nc, ncv, &vopts, &mapd.y, &mapd.x, &mapd.toy, &mapd.tox);
   struct ncplane_options nopts = {
     .horiz = { .align = NCALIGN_CENTER, },
     .rows = 1,
@@ -276,7 +293,7 @@ debwarrior(struct notcurses* nc){
   }
   ncplane_set_base(p.splane, " ", 0, CHANNELS_RGB_INITIALIZER(0, 0, 0, 0, 0, 0));
   int mapy, mapx;
-  ncplane_yx(map, &mapy, &mapx);
+  ncplane_yx(mapd.map, &mapy, &mapx);
   update_stats(&p);
   char32_t c;
   while((c = notcurses_getc_blocking(nc, NULL)) != -1){
@@ -284,14 +301,11 @@ debwarrior(struct notcurses* nc){
       break;
     }
   }
-  return input_loop(nc, &p, map);
+  return input_loop(nc, &p, &mapd);
 }
 
 int main(void){
-  struct notcurses_options nopts = {
-    .flags = NCOPTION_NO_ALTERNATE_SCREEN | NCOPTION_SUPPRESS_BANNERS,
-  };
-  struct notcurses* nc = notcurses_init(&nopts, NULL);
+  struct notcurses* nc = notcurses_init(NULL, NULL);
   if(nc == NULL){
     return EXIT_FAILURE;
   }
