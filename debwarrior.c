@@ -34,7 +34,7 @@ load_celes(struct notcurses* nc, struct ncvisual** ncvs, struct ncplane** celes)
       return -1;
     }
     struct ncvisual_options vopts = {
-      .blitter = NCBLIT_2x2,
+      .blitter = NCBLIT_3x2,
     };
     celes[i] = ncvisual_render(nc, ncvs[i], &vopts);
     ncplane_move_bottom(celes[i]);
@@ -147,7 +147,7 @@ overworld_battle(struct notcurses* nc, struct ncplane* map, player *p){
   ncplane_set_base(ep, "", 0, channels);
   struct ncvisual_options vopts = {
     .scaling = NCSCALE_SCALE,
-    .blitter = NCBLIT_2x2,
+    .blitter = NCBLIT_3x2,
     .n = ep,
   };
   ncvisual_render(nc, ncv, &vopts);
@@ -161,7 +161,7 @@ overworld_battle(struct notcurses* nc, struct ncplane* map, player *p){
 static int
 advance_player(struct notcurses* nc, player* p, struct ncvisual* ncv, struct ncplane* ncp){
   struct ncvisual_options vopts = {
-    .blitter = NCBLIT_2x2,
+    .blitter = NCBLIT_3x2,
     .n = ncp,
   };
   if(ncvisual_decode_loop(ncv) < 0){
@@ -257,7 +257,7 @@ debwarrior(struct notcurses* nc){
     return -1;
   }
   struct ncvisual_options vopts = {
-    .blitter = NCBLIT_2x2,
+    .blitter = NCBLIT_3x2,
   };
   struct ncplane* map = ncvisual_render(nc, ncv, &vopts);
   struct ncplane_options nopts = {
