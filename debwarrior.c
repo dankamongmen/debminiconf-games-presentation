@@ -183,7 +183,7 @@ input_loop(struct notcurses* nc, player* p, struct ncplane* map){
   if(load_celes(nc, ncvs, celes)){
     return -1;
   }
-  int mapy = -1279, mapx = -1184; // FIXME define in terms of screen size
+  int mapy = -810, mapx = -1184; // FIXME define in terms of screen size
   ncplane_move_yx(map, mapy, mapx);
   int dimy, dimx;
   ncplane_dim_yx(notcurses_stdplane(nc), &dimy, &dimx);
