@@ -167,6 +167,7 @@ advance_player(struct notcurses* nc, player* p, struct ncvisual* ncv, struct ncp
   if(ncvisual_decode_loop(ncv) < 0){
     return -1;
   }
+  ncplane_erase(vopts.n);
   if(ncvisual_render(nc, ncv, &vopts) == NULL){
     return -1;
   }
@@ -183,7 +184,7 @@ input_loop(struct notcurses* nc, player* p, struct ncplane* map){
   if(load_celes(nc, ncvs, celes)){
     return -1;
   }
-  int mapy = -810, mapx = -1184; // FIXME define in terms of screen size
+  int mapy = -810, mapx = -1187;
   ncplane_move_yx(map, mapy, mapx);
   int dimy, dimx;
   ncplane_dim_yx(notcurses_stdplane(nc), &dimy, &dimx);
@@ -202,10 +203,10 @@ input_loop(struct notcurses* nc, player* p, struct ncplane* map){
       mapx -= 8;
       celidx = 2;
     }else if(c == NCKEY_UP || c == 'k'){
-      mapy += 8;
+      mapy += 5;
       celidx = 3;
     }else if(c == NCKEY_DOWN || c == 'j'){
-      mapy -= 8;
+      mapy -= 5;
       celidx = 1;
     }else if(c == NCKEY_RESIZE){
       notcurses_refresh(nc, &dimy, &dimx);
