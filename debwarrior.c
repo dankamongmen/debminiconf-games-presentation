@@ -12,7 +12,12 @@ center_plane(struct ncplane* n){
 
 typedef struct player {
   int hp;
+  enum {
+    DIR_RIGHT, DIR_UP, DIR_LEFT, DIR_DOWN, DIR_MAX
+  } direction;
   struct ncplane* splane; // stats plane
+  struct ncvisual *ncvs[DIR_MAX];
+  struct ncplane *ncps[DIR_MAX];
 } player;
 
 static int
@@ -24,21 +29,21 @@ update_stats(player* p){
 }
 
 static int
-load_celes(struct notcurses* nc, struct ncvisual** ncvs, struct ncplane** celes){
-  const char names[] = "lfrb";
+load_celes(struct notcurses* nc, player* p){
+  const char names[] = "rblf";
   char fn[11] = "celesX.gif";
   for(int i = 0 ; i < 4 ; ++i){
     fn[5] = names[i];
-    ncvs[i] = ncvisual_from_file(fn);
-    if(!ncvs[i]){
+    p->ncvs[i] = ncvisual_from_file(fn);
+    if(!p->ncvs[i]){
       return -1;
     }
     struct ncvisual_options vopts = {
-      .blitter = NCBLIT_3x2,
+      .blitter = NCBLIT_2x2,
     };
-    celes[i] = ncvisual_render(nc, ncvs[i], &vopts);
-    ncplane_move_bottom(celes[i]);
-    center_plane(celes[i]);
+    p->ncps[i] = ncvisual_render(nc, p->ncvs[i], &vopts);
+    ncplane_move_bottom(p->ncps[i]);
+    center_plane(p->ncps[i]);
   }
   return 0;
 }
@@ -147,7 +152,7 @@ overworld_battle(struct notcurses* nc, struct ncplane* map, player *p){
   ncplane_set_base(ep, "", 0, channels);
   struct ncvisual_options vopts = {
     .scaling = NCSCALE_SCALE,
-    .blitter = NCBLIT_3x2,
+    .blitter = NCBLIT_2x2,
     .n = ep,
   };
   ncvisual_render(nc, ncv, &vopts);
@@ -159,20 +164,20 @@ overworld_battle(struct notcurses* nc, struct ncplane* map, player *p){
 }
 
 static int
-advance_player(struct notcurses* nc, player* p, struct ncvisual* ncv, struct ncplane* ncp){
+advance_player(struct notcurses* nc, player* p){
   struct ncvisual_options vopts = {
-    .blitter = NCBLIT_3x2,
-    .n = ncp,
+    .blitter = NCBLIT_2x2,
+    .n = p->ncps[p->direction],
   };
-  if(ncvisual_decode_loop(ncv) < 0){
+  if(ncvisual_decode_loop(p->ncvs[p->direction]) < 0){
     return -1;
   }
   ncplane_erase(vopts.n);
-  if(ncvisual_render(nc, ncv, &vopts) == NULL){
+  if(ncvisual_render(nc, p->ncvs[p->direction], &vopts) == NULL){
     return -1;
   }
-  ncplane_move_top(ncp);
-  center_plane(ncp);
+  ncplane_move_top(p->ncps[p->direction]);
+  center_plane(p->ncps[p->direction]);
   update_stats(p);
   return 0;
 }
@@ -188,9 +193,7 @@ struct mapdata {
 static int
 input_loop(struct notcurses* nc, player* p, struct mapdata* mapd){
   struct ncplane* map = mapd->map;
-  struct ncvisual* ncvs[4];
-  struct ncplane* celes[4];
-  if(load_celes(nc, ncvs, celes)){
+  if(load_celes(nc, p)){
     return -1;
   }
   int dimy, dimx;
@@ -199,26 +202,26 @@ input_loop(struct notcurses* nc, player* p, struct mapdata* mapd){
   int mapy = ((-2616.0 / mapd->y) * (mapd->y / mapd->toy)) + (dimy / mapd->toy);
   int mapx = ((-2438.0 / mapd->x) * (mapd->x / mapd->tox)) + (dimx / mapd->tox);
   ncplane_move_yx(map, mapy, mapx);
-  int celidx = 1;
-  ncplane_move_top(celes[celidx]);
+  p->direction = DIR_DOWN;
+  ncplane_move_top(p->ncps[p->direction]);
   notcurses_render(nc);
   char32_t c;
   while((c = notcurses_getc_blocking(nc, NULL)) != -1){
-    ncplane_move_bottom(celes[celidx]);
+    ncplane_move_bottom(p->ncps[p->direction]);
     if(c == 'q'){
       return 0;
     }else if(c == NCKEY_LEFT || c == 'h'){
       mapx += 8;
-      celidx = 0;
+      p->direction = DIR_LEFT;
     }else if(c == NCKEY_RIGHT || c == 'l'){
       mapx -= 8;
-      celidx = 2;
+      p->direction = DIR_RIGHT;
     }else if(c == NCKEY_UP || c == 'k'){
       mapy += 5;
-      celidx = 3;
+      p->direction = DIR_UP;
     }else if(c == NCKEY_DOWN || c == 'j'){
       mapy -= 5;
-      celidx = 1;
+      p->direction = DIR_DOWN;
     }else if(c == NCKEY_RESIZE){
       notcurses_refresh(nc, &dimy, &dimx);
     }
@@ -232,7 +235,7 @@ input_loop(struct notcurses* nc, player* p, struct mapdata* mapd){
       mapy = -(2048 - dimy);
     }
     ncplane_move_yx(map, mapy, mapx);
-    advance_player(nc, p, ncvs[celidx], celes[celidx]);
+    advance_player(nc, p);
     if(overworld_battle(nc, map, p)){
       break;
     }
@@ -269,7 +272,7 @@ debwarrior(struct notcurses* nc){
     return -1;
   }
   struct ncvisual_options vopts = {
-    .blitter = NCBLIT_3x2,
+    .blitter = NCBLIT_2x2,
   };
   struct mapdata mapd = {
     .map = ncvisual_render(nc, ncv, &vopts),
