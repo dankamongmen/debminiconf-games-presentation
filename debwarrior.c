@@ -1,16 +1,8 @@
 #include <stdlib.h>
 #include <notcurses/notcurses.h>
 
-static int
-center_plane(struct ncplane* n){
-  int dimy, dimx;
-  const struct ncplane* p = ncplane_parent_const(n);
-  ncplane_dim_yx(p, &dimy, &dimx);
-  return ncplane_move_yx(n, ncplane_dim_y(p) / 2 - ncplane_dim_y(n) / 2,
-                         ncplane_dim_x(p) / 2 - ncplane_dim_x(n) / 2 + 1);
-}
-
 typedef struct player {
+  struct notcurses* nc;
   int hp;
   enum {
     DIR_RIGHT, DIR_UP, DIR_LEFT, DIR_DOWN, DIR_MAX
@@ -21,6 +13,15 @@ typedef struct player {
 } player;
 
 static int
+center_plane(struct ncplane* n){
+  int dimy, dimx;
+  const struct ncplane* p = ncplane_parent_const(n);
+  ncplane_dim_yx(p, &dimy, &dimx);
+  return ncplane_move_yx(n, ncplane_dim_y(p) / 2 - ncplane_dim_y(n) / 2,
+                         ncplane_dim_x(p) / 2 - ncplane_dim_x(n) / 2 + 1);
+}
+
+static int
 update_stats(player* p){
   ncplane_erase(p->splane);
   ncplane_set_fg_rgb(p->splane, 0x00ffff);
@@ -29,7 +30,7 @@ update_stats(player* p){
 }
 
 static int
-load_celes(struct notcurses* nc, player* p){
+load_celes(player* p){
   const char names[] = "rblf";
   char fn[11] = "celesX.gif";
   for(int i = 0 ; i < 4 ; ++i){
@@ -41,7 +42,7 @@ load_celes(struct notcurses* nc, player* p){
     struct ncvisual_options vopts = {
       .blitter = NCBLIT_2x2,
     };
-    p->ncps[i] = ncvisual_render(nc, p->ncvs[i], &vopts);
+    p->ncps[i] = ncvisual_render(p->nc, p->ncvs[i], &vopts);
     ncplane_move_bottom(p->ncps[i]);
     center_plane(p->ncps[i]);
   }
@@ -49,24 +50,23 @@ load_celes(struct notcurses* nc, player* p){
 }
 
 static int
-battle_loop(struct notcurses* nc, struct ncplane* plotp, player *p,
-            struct ncselector* cmdsel){
+battle_loop(struct ncplane* plotp, player *p, struct ncselector* cmdsel){
   while(p->hp > 0){
     ncplane_set_fg_rgb(plotp, 0xf0f0f0);
     ncplane_printf(plotp, "Choose an action.\n");
     ncplane_set_fg_rgb(plotp, 0x00ff88);
-    notcurses_render(nc);
+    notcurses_render(p->nc);
     ncinput ni;
     char32_t ch;
-    notcurses_render(nc);
-    while((ch = notcurses_getc_blocking(nc, &ni))){
+    notcurses_render(p->nc);
+    while((ch = notcurses_getc_blocking(p->nc, &ni))){
       if(!ncselector_offer_input(cmdsel, &ni)){
         if(ch == NCKEY_ENTER){
           ncplane_printf(plotp, "Your attack is ineffective against the almighty WarMECH!\n");
           break;
         }
       }
-      notcurses_render(nc);
+      notcurses_render(p->nc);
     }
     ncplane_printf(plotp, "WarMECH attacks with NUKE\n");
     int damage = random() % 5 + 2;
@@ -75,19 +75,19 @@ battle_loop(struct notcurses* nc, struct ncplane* plotp, player *p,
       p->hp = 0;
     }
     update_stats(p);
-    notcurses_render(nc);
+    notcurses_render(p->nc);
   }
   ncplane_set_fg_rgb(plotp, 0xff8080);
   ncplane_printf(plotp, "Thou art dead, bitch 💣\n\n");
-  notcurses_render(nc);
+  notcurses_render(p->nc);
   return -1;
 }
 
 static int
-do_battle(struct notcurses* nc, struct ncplane* ep, player* p){
-  struct ncplane* cmdp = ncplane_new(notcurses_stdplane(nc), 10, 30,
-                            ncplane_dim_y(notcurses_stdplane(nc)) - 10,
-                            0, NULL, NULL);
+do_battle(struct ncplane* ep, player* p){
+  struct ncplane* stdn = notcurses_stdplane(p->nc);
+  struct ncplane* cmdp = ncplane_new(stdn, 10, 30, ncplane_dim_y(stdn) - 10,
+                                     0, NULL, NULL);
   ncplane_set_base(cmdp, " ", NCSTYLE_NONE, 0);
   static struct ncselector_item items[] = {
     { "Cast spell", "", },
@@ -108,16 +108,16 @@ do_battle(struct notcurses* nc, struct ncplane* ep, player* p){
     ncplane_destroy(cmdp);
     return -1;
   }
-  struct ncplane* plotp = ncplane_new(notcurses_stdplane(nc), 8,
-                   ncplane_dim_x(notcurses_stdplane(nc)) - ncplane_dim_x(cmdp),
-                   ncplane_dim_y(notcurses_stdplane(nc)) - 8,
+  struct ncplane* plotp = ncplane_new(stdn, 8,
+                   ncplane_dim_x(stdn) - ncplane_dim_x(cmdp),
+                   ncplane_dim_y(stdn) - 8,
                    ncplane_dim_x(cmdp), NULL, NULL);
   ncplane_set_base(plotp, " ", 0, CHANNELS_RGB_INITIALIZER(0, 0, 0, 0, 0, 0));
   ncplane_set_scrolling(plotp, true);
   ncplane_set_fg_rgb(plotp, 0x40f0c0);
   ncplane_printf(plotp, "WarMECH approaches!\n");
   ncplane_move_top(p->splane);
-  if(battle_loop(nc, plotp, p, cmdsel)){
+  if(battle_loop(plotp, p, cmdsel)){
     return -1;
   }
   ncplane_destroy(plotp);
@@ -126,7 +126,7 @@ do_battle(struct notcurses* nc, struct ncplane* ep, player* p){
 }
 
 static int
-overworld_battle(struct notcurses* nc, struct ncplane* map, player *p){
+overworld_battle(struct ncplane* map, player *p){
   if(random() % 30 != 0){
     return 0;
   }
@@ -141,10 +141,10 @@ overworld_battle(struct notcurses* nc, struct ncplane* map, player *p){
   }
   ncplane_greyscale(copy);
   int dimy, dimx;
-  ncplane_dim_yx(notcurses_stdplane(nc), &dimy, &dimx);
+  struct ncplane* stdn = notcurses_stddim_yx(p->nc, &dimy, &dimx);
   const int ex = dimx / 4 * 3;
-  const int exoff = ncplane_align(notcurses_stdplane(nc), NCALIGN_CENTER, ex);
-  struct ncplane* ep = ncplane_new(notcurses_stdplane(nc), dimy / 4 * 3,
+  const int exoff = ncplane_align(stdn, NCALIGN_CENTER, ex);
+  struct ncplane* ep = ncplane_new(stdn, dimy / 4 * 3,
                                    ex, 1, exoff, NULL, NULL);
   uint64_t channels = 0;
   channels_set_fg_alpha(&channels, CELL_ALPHA_TRANSPARENT);
@@ -155,8 +155,8 @@ overworld_battle(struct notcurses* nc, struct ncplane* map, player *p){
     .blitter = NCBLIT_2x2,
     .n = ep,
   };
-  ncvisual_render(nc, ncv, &vopts);
-  int r = do_battle(nc, ep, p);
+  ncvisual_render(p->nc, ncv, &vopts);
+  int r = do_battle(ep, p);
   ncplane_destroy(ep);
   ncplane_destroy(copy);
   ncvisual_destroy(ncv);
@@ -164,7 +164,7 @@ overworld_battle(struct notcurses* nc, struct ncplane* map, player *p){
 }
 
 static int
-advance_player(struct notcurses* nc, player* p){
+advance_player(player* p){
   struct ncvisual_options vopts = {
     .blitter = NCBLIT_2x2,
     .n = p->ncps[p->direction],
@@ -173,7 +173,7 @@ advance_player(struct notcurses* nc, player* p){
     return -1;
   }
   ncplane_erase(vopts.n);
-  if(ncvisual_render(nc, p->ncvs[p->direction], &vopts) == NULL){
+  if(ncvisual_render(p->nc, p->ncvs[p->direction], &vopts) == NULL){
     return -1;
   }
   ncplane_move_top(p->ncps[p->direction]);
@@ -191,22 +191,22 @@ struct mapdata {
 };
 
 static int
-input_loop(struct notcurses* nc, player* p, struct mapdata* mapd){
+input_loop(player* p, struct mapdata* mapd){
   struct ncplane* map = mapd->map;
-  if(load_celes(nc, p)){
+  if(load_celes(p)){
     return -1;
   }
   int dimy, dimx;
-  ncplane_dim_yx(notcurses_stdplane(nc), &dimy, &dimx);
+  ncplane_dim_yx(notcurses_stdplane(p->nc), &dimy, &dimx);
   // coneria is at 2625, 2425
   int mapy = ((-2616.0 / mapd->y) * (mapd->y / mapd->toy)) + (dimy / mapd->toy);
   int mapx = ((-2438.0 / mapd->x) * (mapd->x / mapd->tox)) + (dimx / mapd->tox);
   ncplane_move_yx(map, mapy, mapx);
   p->direction = DIR_DOWN;
   ncplane_move_top(p->ncps[p->direction]);
-  notcurses_render(nc);
+  notcurses_render(p->nc);
   char32_t c;
-  while((c = notcurses_getc_blocking(nc, NULL)) != -1){
+  while((c = notcurses_getc_blocking(p->nc, NULL)) != -1){
     ncplane_move_bottom(p->ncps[p->direction]);
     if(c == 'q'){
       return 0;
@@ -223,7 +223,7 @@ input_loop(struct notcurses* nc, player* p, struct mapdata* mapd){
       mapy -= 5;
       p->direction = DIR_DOWN;
     }else if(c == NCKEY_RESIZE){
-      notcurses_refresh(nc, &dimy, &dimx);
+      notcurses_refresh(p->nc, &dimy, &dimx);
     }
     if(mapx < -(2048 - dimx)){
       mapx = -(2048 - dimx);
@@ -235,11 +235,11 @@ input_loop(struct notcurses* nc, player* p, struct mapdata* mapd){
       mapy = -(2048 - dimy);
     }
     ncplane_move_yx(map, mapy, mapx);
-    advance_player(nc, p);
-    if(overworld_battle(nc, map, p)){
+    advance_player(p);
+    if(overworld_battle(map, p)){
       break;
     }
-    notcurses_render(nc);
+    notcurses_render(p->nc);
   }
   return -1;
 }
@@ -265,8 +265,8 @@ display_logo(struct notcurses* nc){
 }
 
 static int
-debwarrior(struct notcurses* nc){
-  display_logo(nc);
+debwarrior(player* p){
+  display_logo(p->nc);
   struct ncvisual* ncv = ncvisual_from_file("ffi.png");
   if(!ncv){
     return -1;
@@ -275,44 +275,42 @@ debwarrior(struct notcurses* nc){
     .blitter = NCBLIT_2x2,
   };
   struct mapdata mapd = {
-    .map = ncvisual_render(nc, ncv, &vopts),
+    .map = ncvisual_render(p->nc, ncv, &vopts),
   };
   if(mapd.map == NULL){
     return -1;
   }
-  ncvisual_geom(nc, ncv, &vopts, &mapd.y, &mapd.x, &mapd.toy, &mapd.tox);
+  ncvisual_geom(p->nc, ncv, &vopts, &mapd.y, &mapd.x, &mapd.toy, &mapd.tox);
   struct ncplane_options nopts = {
     .horiz = { .align = NCALIGN_CENTER, },
     .rows = 1,
     .cols = 16,
     .flags = NCPLANE_OPTION_HORALIGNED,
   };
-  player p = {
-    .hp = random() % 14 + 5,
-    .splane = ncplane_create(notcurses_stdplane(nc), &nopts),
-  };
-  if(!p.splane){
+  p->hp = random() % 14 + 5;
+  if((p->splane = ncplane_create(notcurses_stdplane(p->nc), &nopts)) == NULL){
     return -1;
   }
-  ncplane_set_base(p.splane, " ", 0, CHANNELS_RGB_INITIALIZER(0, 0, 0, 0, 0, 0));
+  ncplane_set_base(p->splane, " ", 0, CHANNELS_RGB_INITIALIZER(0, 0, 0, 0, 0, 0));
   int mapy, mapx;
   ncplane_yx(mapd.map, &mapy, &mapx);
-  update_stats(&p);
+  update_stats(p);
   char32_t c;
-  while((c = notcurses_getc_blocking(nc, NULL)) != -1){
+  while((c = notcurses_getc_blocking(p->nc, NULL)) != -1){
     if(c == NCKEY_ENTER){
       break;
     }
   }
-  return input_loop(nc, &p, &mapd);
+  return input_loop(p, &mapd);
 }
 
 int main(void){
-  struct notcurses* nc = notcurses_init(NULL, NULL);
-  if(nc == NULL){
+  player p = {0};
+  p.nc = notcurses_init(NULL, NULL);
+  if(p.nc == NULL){
     return EXIT_FAILURE;
   }
-  int r = debwarrior(nc);
-  notcurses_stop(nc);
+  int r = debwarrior(&p);
+  notcurses_stop(p.nc);
   return r ? EXIT_FAILURE : EXIT_SUCCESS;
 }
