@@ -58,7 +58,6 @@ battle_loop(struct ncplane* plotp, player *p, struct ncselector* cmdsel){
     notcurses_render(p->nc);
     ncinput ni;
     char32_t ch;
-    notcurses_render(p->nc);
     while((ch = notcurses_getc_blocking(p->nc, &ni))){
       if(!ncselector_offer_input(cmdsel, &ni)){
         if(ch == NCKEY_ENTER){
@@ -75,7 +74,6 @@ battle_loop(struct ncplane* plotp, player *p, struct ncselector* cmdsel){
       p->hp = 0;
     }
     update_stats(p);
-    notcurses_render(p->nc);
   }
   ncplane_set_fg_rgb(plotp, 0xff8080);
   ncplane_printf(plotp, "Thou art dead, bitch 💣\n\n");
