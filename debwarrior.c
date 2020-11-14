@@ -12,6 +12,14 @@ typedef struct player {
   struct ncplane *ncps[DIR_MAX];
 } player;
 
+struct mapdata {
+  struct ncplane* map;
+  int y;
+  int x;
+  int toy;
+  int tox;
+};
+
 static int
 center_plane(struct ncplane* n){
   int dimy, dimx;
@@ -84,8 +92,13 @@ battle_loop(struct ncplane* plotp, player *p, struct ncselector* cmdsel){
 static int
 do_battle(struct ncplane* ep, player* p){
   struct ncplane* stdn = notcurses_stdplane(p->nc);
-  struct ncplane* cmdp = ncplane_new(stdn, 10, 30, ncplane_dim_y(stdn) - 10,
-                                     0, NULL, NULL);
+  struct ncplane_options nopts = {
+    .y = ncplane_dim_y(stdn) - 10,
+    .horiz.x = 0,
+    .rows = 10,
+    .cols = 30,
+  };
+  struct ncplane* cmdp = ncplane_create(stdn, &nopts);
   ncplane_set_base(cmdp, " ", NCSTYLE_NONE, 0);
   static struct ncselector_item items[] = {
     { "Cast spell", "", },
@@ -106,10 +119,12 @@ do_battle(struct ncplane* ep, player* p){
     ncplane_destroy(cmdp);
     return -1;
   }
-  struct ncplane* plotp = ncplane_new(stdn, 8,
-                   ncplane_dim_x(stdn) - ncplane_dim_x(cmdp),
-                   ncplane_dim_y(stdn) - 8,
-                   ncplane_dim_x(cmdp), NULL, NULL);
+  memset(&nopts, 0, sizeof(nopts));
+  nopts.y = ncplane_dim_y(stdn) - 8;
+  nopts.horiz.x = ncplane_dim_x(cmdp);
+  nopts.rows = 8;
+  nopts.cols = ncplane_dim_x(stdn) - ncplane_dim_x(cmdp);
+  struct ncplane* plotp = ncplane_create(stdn, &nopts);
   ncplane_set_base(plotp, " ", 0, CHANNELS_RGB_INITIALIZER(0, 0, 0, 0, 0, 0));
   ncplane_set_scrolling(plotp, true);
   ncplane_set_fg_rgb(plotp, 0x40f0c0);
@@ -140,10 +155,14 @@ overworld_battle(struct ncplane* map, player *p){
   ncplane_greyscale(copy);
   int dimy, dimx;
   struct ncplane* stdn = notcurses_stddim_yx(p->nc, &dimy, &dimx);
-  const int ex = dimx / 4 * 3;
-  const int exoff = ncplane_align(stdn, NCALIGN_CENTER, ex);
-  struct ncplane* ep = ncplane_new(stdn, dimy / 4 * 3,
-                                   ex, 1, exoff, NULL, NULL);
+  struct ncplane_options nopts = {
+    .y = 1,
+    .horiz.align = NCALIGN_CENTER,
+    .rows = dimy / 4 * 3,
+    .cols = dimx / 4 * 3,
+    .flags = NCPLANE_OPTION_HORALIGNED,
+  };
+  struct ncplane* ep = ncplane_create(stdn, &nopts);
   uint64_t channels = 0;
   channels_set_fg_alpha(&channels, CELL_ALPHA_TRANSPARENT);
   channels_set_bg_alpha(&channels, CELL_ALPHA_TRANSPARENT);
@@ -179,14 +198,6 @@ advance_player(player* p){
   update_stats(p);
   return 0;
 }
-
-struct mapdata {
-  struct ncplane* map;
-  int y;
-  int x;
-  int toy;
-  int tox;
-};
 
 static int
 input_loop(player* p, struct mapdata* mapd){
