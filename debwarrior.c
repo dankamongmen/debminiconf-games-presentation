@@ -94,7 +94,7 @@ do_battle(struct ncplane* ep, player* p){
   struct ncplane* stdn = notcurses_stdplane(p->nc);
   struct ncplane_options nopts = {
     .y = ncplane_dim_y(stdn) - 10,
-    .horiz.x = 0,
+    .x = 0,
     .rows = 10,
     .cols = 30,
   };
@@ -121,7 +121,7 @@ do_battle(struct ncplane* ep, player* p){
   }
   memset(&nopts, 0, sizeof(nopts));
   nopts.y = ncplane_dim_y(stdn) - 8;
-  nopts.horiz.x = ncplane_dim_x(cmdp);
+  nopts.x = ncplane_dim_x(cmdp);
   nopts.rows = 8;
   nopts.cols = ncplane_dim_x(stdn) - ncplane_dim_x(cmdp);
   struct ncplane* plotp = ncplane_create(stdn, &nopts);
@@ -157,7 +157,7 @@ overworld_battle(struct ncplane* map, player *p){
   struct ncplane* stdn = notcurses_stddim_yx(p->nc, &dimy, &dimx);
   struct ncplane_options nopts = {
     .y = 1,
-    .horiz.align = NCALIGN_CENTER,
+    .x = NCALIGN_CENTER,
     .rows = dimy / 4 * 3,
     .cols = dimx / 4 * 3,
     .flags = NCPLANE_OPTION_HORALIGNED,
@@ -291,7 +291,8 @@ debwarrior(player* p){
   }
   ncvisual_geom(p->nc, ncv, &vopts, &mapd.y, &mapd.x, &mapd.toy, &mapd.tox);
   struct ncplane_options nopts = {
-    .horiz = { .align = NCALIGN_CENTER, },
+    .y = 0,
+    .x = NCALIGN_CENTER,
     .rows = 1,
     .cols = 16,
     .flags = NCPLANE_OPTION_HORALIGNED,
