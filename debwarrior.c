@@ -256,6 +256,9 @@ input_loop(player* p, struct mapdata* mapd){
 static int
 display_logo(struct notcurses* nc){
   struct ncvisual* logo = ncvisual_from_file("logo.png");
+  if(logo == NULL){
+    return -1;
+  }
   struct ncvisual_options vopts = {
     .scaling = NCSCALE_STRETCH,
   };
